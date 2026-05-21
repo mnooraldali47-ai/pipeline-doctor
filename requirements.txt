@@ -1,6 +1,6 @@
 deepagents
-python-jenkins
 PyGithub
 python-dotenv
 requests
 openai
+responses
