@@ -44,9 +44,6 @@ jenkins_logs/
 *.log
 build_artifacts/
 
-# Local logs directory
-logs/
-
 # OS
 .DS_Store
 Thumbs.db
