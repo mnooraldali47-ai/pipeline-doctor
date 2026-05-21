@@ -1,13 +1,17 @@
 services:
   jenkins:
-    image: jenkins/jenkins:lts
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pipeline-doctor-jenkins:latest
     container_name: pipeline-doctor-jenkins
     restart: unless-stopped
     ports:
-      - "8080:8080"   # Web-UI
-      - "50000:50000" # Jenkins Agent-Kommunikation
+      - "8080:8080"    # Web-UI
+      - "50000:50000"  # Jenkins Agent-Kommunikation
     volumes:
       - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker-in-Docker für Pipeline-Agents
     environment:
       - JAVA_OPTS=-Djenkins.install.runSetupWizard=true
 
