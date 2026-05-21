@@ -2,14 +2,13 @@ FROM jenkins/jenkins:lts
 
 USER root
 
-# Python 3.11 + pip
-# /etc/pip.conf disables PEP 668 "externally-managed" guard (Debian Bookworm)
+# Python 3 + pip
+# /etc/pip.conf disables PEP 668 "externally-managed" guard (Debian Trixie)
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-      python3.11 \
+      python3 \
       python3-pip \
- && ln -sf /usr/bin/python3.11 /usr/bin/python3 \
- && ln -sf /usr/bin/python3.11 /usr/bin/python \
+ && ln -sf /usr/bin/python3 /usr/bin/python \
  && ln -sf /usr/bin/pip3 /usr/bin/pip \
  && printf '[global]\nbreak-system-packages = true\n' > /etc/pip.conf \
  && rm -rf /var/lib/apt/lists/*
