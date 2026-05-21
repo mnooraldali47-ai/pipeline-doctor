@@ -1,0 +1,16 @@
+services:
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: pipeline-doctor-jenkins
+    restart: unless-stopped
+    ports:
+      - "8080:8080"   # Web-UI
+      - "50000:50000" # Jenkins Agent-Kommunikation
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    environment:
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=true
+
+volumes:
+  jenkins_home:
+    name: pipeline-doctor-jenkins-home
