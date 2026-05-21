@@ -48,3 +48,6 @@ build_artifacts/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Test-Repos sind eigenst�ndige Git-Repos auf GitHub
+test-repos/

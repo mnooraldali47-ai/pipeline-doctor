@@ -98,5 +98,4 @@ Alle Einstellungen via `.env` (siehe `.env.example`):
 
 ## Hochschul-Kontext
 
-Projekt im Rahmen des Moduls **Agentic AI**, M-Nour Aldali, adesso insurance solutions.  
-Demo Sprint 1: 29. Mai 2026.
+Projekt im Rahmen des Moduls **Agentic AI**
