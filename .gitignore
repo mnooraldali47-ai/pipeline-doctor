@@ -1,0 +1,53 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.mo
+*.pot
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env.local
+.env.*.local
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Jenkins
+jenkins_logs/
+*.log
+build_artifacts/
+
+# Local logs directory
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
