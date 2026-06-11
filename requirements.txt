@@ -3,4 +3,5 @@ PyGithub
 python-dotenv
 requests
 openai
+langchain-openai
 responses
