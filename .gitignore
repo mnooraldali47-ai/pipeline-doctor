@@ -44,6 +44,9 @@ jenkins_logs/
 *.log
 build_artifacts/
 
+# Generated reports (contain LLM output, not for VCS)
+reports/
+
 # OS
 .DS_Store
 Thumbs.db

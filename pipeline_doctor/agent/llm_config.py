@@ -38,7 +38,7 @@ def get_llm() -> ChatOpenAI:
         openai_api_key=api_key,
         openai_api_base=api_base,
         temperature=0.3,
-        max_tokens=1000,
+        max_tokens=600,
     )
 
 

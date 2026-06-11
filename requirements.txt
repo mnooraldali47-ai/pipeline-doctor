@@ -4,4 +4,5 @@ python-dotenv
 requests
 openai
 langchain-openai
+pydantic>=2.0
 responses
