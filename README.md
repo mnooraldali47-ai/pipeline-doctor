@@ -7,8 +7,8 @@
 | Sprint | Inhalt | Status |
 |--------|--------|--------|
 | Sprint 1 | Jenkins-Integration + Log-Abruf | ✅ Abgeschlossen |
-| Sprint 2 | LLM-Diagnose (GWDG/KISSKI API) | 🔜 Geplant |
-| Sprint 3 | Agentic Loop (DeepAgents) | 🔜 Geplant |
+| Sprint 2 | LLM-Diagnose (GWDG/KISSKI API) | ✅ Abgeschlossen |
+| Sprint 3 | Automatischer Fix nach Bestätigung | ✅ Abgeschlossen |
 
 ## Was funktioniert (Sprint 1)
 
@@ -21,13 +21,29 @@
   - `failing-syntax` — SyntaxError in Python-Datei
 - 17 Unit-Tests für JenkinsClient (alle HTTP-Calls gemockt)
 
+## Was funktioniert (Sprint 2)
+
+- Log-Preprocessing: reduziert Logs auf relevante Zeilen vor dem LLM-Call
+- LLM-Diagnose via GWDG/KISSKI API → strukturiertes `Diagnosis`-Objekt
+- Felder: `error_type`, `root_cause`, `root_cause_evidence`, `fix_suggestion`, `confidence`
+- Markdown-Report in `reports/sprint2-diagnoses.md`
+
+## Was funktioniert (Sprint 3)
+
+- `AutoFixAgent` plant Fix aus Diagnose → `FixPlan`-Objekt
+- Interaktive Bestätigung: `"Möchtest du diesen Fix anwenden? [y/N]"`
+- **Automatisch anwendbar:** `syntax_error` — fehlender Doppelpunkt in Funktionsdefinition
+- **Bewusst nicht automatisch:** `dependency_not_found`, `test_failure` (zu ambivalent)
+- Nach Bestätigung: Datei in `test-repos/` wird geändert + `git diff` wird angezeigt
+- Kein Push, kein Pull Request, keine Änderungen außerhalb von `test-repos/`
+
 ## Überblick
 
-Pipeline Doctor analysiert fehlgeschlagene CI/CD-Builds vollautomatisch:
+Pipeline Doctor analysiert fehlgeschlagene CI/CD-Builds und schlägt Fixes vor:
 1. Verbindet sich mit Jenkins und lädt Build-Logs
-2. Ruft zugehörige Git-Commits und Diffs ab
-3. Analysiert Fehler mit einem LLM (GWDG/KISSKI API)
-4. Gibt strukturierte Diagnose + Lösungsvorschläge aus
+2. Analysiert Fehler mit einem LLM (GWDG/KISSKI API)
+3. Gibt strukturierte Diagnose + Lösungsvorschläge aus
+4. Bietet nach Bestätigung automatischen Fix im lokalen Repo an
 
 ## Tech-Stack
 
@@ -62,9 +78,21 @@ python scripts/test_jenkins_connection.py
 python scripts/fetch_failure_logs.py
 # → Logs landen in logs/
 
-# 6. Unit-Tests laufen lassen
+# 6. LLM-Diagnose für alle Jobs
+python scripts/analyze_failures.py
+# → Report in reports/sprint2-diagnoses.md
+
+# 7. Sprint 3: Diagnose + bestätigter Auto-Fix
+python scripts/apply_suggested_fix.py --job failing-syntax
+# → Zeigt Diagnose, fragt [y/N], fixt bei Bestätigung
+
+# 8. Unit-Tests laufen lassen
 pytest tests/ -v
 ```
+
+> **Hinweis Sprint 3:** Aktuell wird nur `syntax_error` (fehlender Doppelpunkt in
+> Funktionsdefinitionen) automatisch gefixt. `dependency_not_found` und `test_failure`
+> werden erklärt, aber nicht automatisch angewendet.
 
 ## Projektstruktur
 
@@ -77,6 +105,8 @@ pipeline-doctor/
   scripts/
     test_jenkins_connection.py   # Verbindungstest
     fetch_failure_logs.py        # Log-Abruf (Sprint 1)
+    analyze_failures.py          # LLM-Diagnose + Report (Sprint 2)
+    apply_suggested_fix.py       # Diagnose + bestätigter Auto-Fix (Sprint 3)
   tests/                         # pytest Unit-Tests
   test-repos/                    # 3 Fehler-Szenarien für Jenkins
   jenkins/                       # Docker-Setup für lokalen Jenkins

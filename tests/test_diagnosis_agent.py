@@ -164,7 +164,7 @@ class TestErrorHandling:
             "parsed": None,
             "parsing_error": Exception("bad JSON"),
         }
-        with pytest.raises(ValueError, match="unparseable"):
+        with pytest.raises(ValueError, match="parsierbar"):
             agent.diagnose(_MOCK_LOG)
 
 
