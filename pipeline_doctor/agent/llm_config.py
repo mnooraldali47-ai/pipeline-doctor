@@ -17,7 +17,7 @@ def get_llm() -> ChatOpenAI:
 
     Returns:
         ChatOpenAI: Ready-to-use LLM instance with temperature=0.3 and
-            max_tokens=1000, suitable for structured code-analysis tasks.
+            max_tokens=1500, suitable for structured code-analysis tasks.
 
     Raises:
         ValueError: If GWDG_API_KEY or GWDG_API_BASE_URL are not set.
@@ -38,7 +38,7 @@ def get_llm() -> ChatOpenAI:
         openai_api_key=api_key,
         openai_api_base=api_base,
         temperature=0.3,
-        max_tokens=600,
+        max_tokens=1500,
     )
 
 
