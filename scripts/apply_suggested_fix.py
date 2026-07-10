@@ -4,6 +4,7 @@ Usage:
     python scripts/apply_suggested_fix.py --job failing-syntax
     python scripts/apply_suggested_fix.py --job failing-dependency
     python scripts/apply_suggested_fix.py --job failing-tests
+    python scripts/apply_suggested_fix.py --all
 
 The script:
     1. Finds the newest log file for the given job under logs/
@@ -41,7 +42,7 @@ from pipeline_doctor.tools.jenkins_client import (
 PROJECT_ROOT = Path(__file__).parent.parent
 LOGS_DIR = PROJECT_ROOT / "logs"
 
-_KNOWN_JOBS = {"failing-dependency", "failing-syntax", "failing-tests"}
+_KNOWN_JOBS = ["failing-syntax", "failing-dependency", "failing-tests"]
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -51,10 +52,15 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Pipeline Doctor Sprint 3 — Diagnose + bestätigter Auto-Fix"
     )
-    parser.add_argument(
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
         "--job",
-        required=True,
-        help="Jenkins Job-Name, z.B. failing-syntax",
+        help="Einzelner Jenkins Job-Name, z.B. failing-syntax",
+    )
+    group.add_argument(
+        "--all",
+        action="store_true",
+        help=f"Alle bekannten Jobs analysieren: {', '.join(_KNOWN_JOBS)}",
     )
     return parser.parse_args()
 
@@ -93,49 +99,47 @@ def fetch_log_from_jenkins(job: str) -> tuple[str, int] | None:
         return None
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── Per-job logic ─────────────────────────────────────────────────────────────
 
 
-def main() -> None:
-    args = _parse_args()
-    job: str = args.job
+def process_job(job: str, diagnosis_agent: DiagnosisAgent, fix_agent: AutoFixAgent) -> None:
+    """Run full diagnose+fix workflow for a single job."""
+    print(f"\n{'═' * 56}")
+    print(f"  Job: {job}")
+    print(f"{'═' * 56}")
 
-    print(f"\n🔍 Pipeline Doctor — Sprint 3: Auto-Fix")
-    print(f"   Job: {job}\n")
-
-    # ── Step 1: Get log ──────────────────────────────────────────────────────
+    # Step 1: Get log
     result = find_latest_log(job)
     if result:
         log_path, build_nr = result
-        print(f"   Log gefunden: {log_path.name} (Build #{build_nr})")
+        print(f"   Log: {log_path.name} (Build #{build_nr})")
         try:
             raw_log = log_path.read_text(encoding="utf-8")
         except OSError as e:
             print(f"   ❌ Datei nicht lesbar: {e}")
-            sys.exit(1)
+            return
     else:
-        print(f"   Kein lokales Log für '{job}' — versuche Jenkins live ...")
+        print(f"   Kein lokales Log — versuche Jenkins live ...")
         live = fetch_log_from_jenkins(job)
         if live is None:
             print(
                 f"   ❌ Kein Log gefunden. Bitte zuerst ausführen:\n"
                 f"      python scripts/fetch_failure_logs.py"
             )
-            sys.exit(1)
+            return
         raw_log, build_nr = live
         saved = LOGS_DIR / f"{job}-build-{build_nr}.log"
         LOGS_DIR.mkdir(exist_ok=True)
         saved.write_text(raw_log, encoding="utf-8")
         print(f"   Log gespeichert: {saved.name}")
 
-    # ── Step 2: Diagnose ─────────────────────────────────────────────────────
+    # Step 2: Diagnose
     print("\n   Analysiere Log mit LLM ...")
     try:
-        agent = DiagnosisAgent()
-        diagnosis, stats = agent.diagnose_with_stats(raw_log)
+        diagnosis, stats = diagnosis_agent.diagnose_with_stats(raw_log)
     except Exception as e:
         print(f"   ❌ Diagnose fehlgeschlagen: {e}")
-        sys.exit(1)
+        return
 
     preprocessed = stats["preprocessed"]
     saved_pct = (1 - preprocessed["compression_ratio"]) * 100
@@ -148,12 +152,29 @@ def main() -> None:
         f"(Konfidenz {diagnosis.confidence:.2f}, {stats['llm_time']:.1f}s)"
     )
 
-    # ── Step 3: Fix-Workflow ─────────────────────────────────────────────────
-    fix_agent = AutoFixAgent()
+    # Step 3: Fix-Workflow
     applied = fix_agent.run(diagnosis, job, build_nr)
-
     if not applied:
         print("\n   Keine Änderungen vorgenommen.")
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+
+def main() -> None:
+    args = _parse_args()
+    jobs = _KNOWN_JOBS if args.all else [args.job]
+
+    print(f"\n🔍 Pipeline Doctor — Sprint 3: Auto-Fix")
+    if len(jobs) > 1:
+        print(f"   Jobs: {', '.join(jobs)}")
+
+    diagnosis_agent = DiagnosisAgent()
+    fix_agent = AutoFixAgent()
+
+    for job in jobs:
+        process_job(job, diagnosis_agent, fix_agent)
+
     print()
 
 

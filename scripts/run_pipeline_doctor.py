@@ -72,9 +72,19 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--mode",
+        choices=["auto", "interactive", "preview"],
+        default="auto",
+        help=(
+            "Fix mode: auto (default, no confirmation), "
+            "interactive (ask before PR), "
+            "preview (diagnosis only, no fix)"
+        ),
+    )
+    p.add_argument(
         "--dry-run",
         action="store_true",
-        help="Diagnose only — skip the auto-fix and PR steps",
+        help="Diagnose only — alias for --mode preview (kept for compatibility)",
     )
     return p
 
@@ -153,7 +163,7 @@ def main() -> int:
     print("=" * 60)
     print(f"   Job      : {job_name}#{build_number}")
     print(f"   Repo     : {repo}")
-    print(f"   Dry-run  : {dry_run}")
+    print(f"   Mode     : {args.mode}{' (--dry-run)' if dry_run else ''}")
     print()
 
     # ── Phase 2 + 3: Preprocess & Diagnose (single LLM call) ─────────────────
@@ -189,15 +199,42 @@ def main() -> int:
         print(f"\n   ❌ Unexpected error during diagnosis: {exc}")
         return 1
 
-    if dry_run:
+    # Preview mode or --dry-run: stop after diagnosis
+    if args.mode == "preview" or dry_run:
         elapsed = time.time() - start
         print("\n" + "=" * 60)
-        print("🔍 Dry-run complete — no fix applied")
+        if args.mode == "preview":
+            print("👀 Preview mode — no fix applied")
+        else:
+            print("🔍 Dry-run complete — no fix applied")
         print(f"   Job   : {job_name}#{build_number}")
         print(f"   Error : {diagnosis.error_type}")
         print(f"   Time  : {elapsed:.1f}s")
         print("=" * 60)
         return 0
+
+    # Interactive mode: show plan and ask for confirmation
+    if args.mode == "interactive":
+        print("\n" + "=" * 60)
+        print("🤔 Interactive Mode — Confirm Before Fix")
+        print("=" * 60)
+        print(f"\n📋 Planned actions for repo '{repo}':")
+        print(f"   1. Read {diagnosis.affected_file} from GitHub")
+        print(f"   2. Generate fix for: {diagnosis.error_type}")
+        print(f"   3. Create branch: pipeline-doctor-fix-{repo}-<timestamp>")
+        print(f"   4. Commit fix to that branch")
+        print(f"   5. Open Pull Request for human review")
+        print(f"\n   Confidence : {int(diagnosis.confidence * 100)}%")
+        print(f"   Root cause : {diagnosis.root_cause}")
+        print(f"\n   ⚠️  This will create a real Pull Request on GitHub.")
+
+        answer = input("\n👉 Proceed with auto-fix? [y/N]: ").strip().lower()
+
+        if answer not in ("y", "yes", "j", "ja"):
+            print("\n❌ Aborted by user. No changes made.")
+            return 0
+
+        print("\n✅ Confirmed. Proceeding with auto-fix...\n")
 
     # ── Phase 4: Auto-Fix via DeepAgent ───────────────────────────────────────
 
@@ -251,6 +288,7 @@ def main() -> int:
     print(f"   Job   : {job_name}#{build_number}")
     print(f"   Error : {diagnosis.error_type}")
     print(f"   Repo  : {repo}")
+    print(f"   Mode  : {args.mode}")
     print(f"   Time  : {elapsed:.1f}s")
     print("=" * 60)
     return 0

@@ -37,3 +37,10 @@ class FixPlan(BaseModel):
     explanation: str = Field(
         description="Why this fix is (or is not) safe to apply automatically."
     )
+    line_fixes: list[tuple[int, str, str]] = Field(
+        default_factory=list,
+        description=(
+            "Programmatic replacements: list of (line_number_1based, old_line, new_line). "
+            "Used by _apply_fix; empty means no automated replacement available."
+        ),
+    )

@@ -7,7 +7,7 @@ Uses tmp_path for file isolation and patches builtins.input for the confirmation
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -268,22 +268,21 @@ class TestColonFix:
         make_syntax_repo(tmp_path)
         agent = AutoFixAgent(test_repos_root=tmp_path)
         file_path = tmp_path / "failing-syntax" / "main.py"
+        changes = AutoFixAgent._find_missing_colons(file_path.read_text(encoding="utf-8"))
 
-        agent._apply_syntax_colon_fix(file_path)
+        AutoFixAgent._apply_line_fixes(file_path, changes)
 
         lines = file_path.read_text(encoding="utf-8").splitlines()
-        # add(a, b): should be unchanged
         assert any(line.strip() == "def add(a, b):" for line in lines)
-        # multiply was missing colon, now has it
         assert any(line.strip() == "def multiply(x, y):" for line in lines)
 
     def test_existing_correct_defs_unchanged(self, tmp_path):
         make_syntax_repo(tmp_path, broken=False)
-        agent = AutoFixAgent(test_repos_root=tmp_path)
         file_path = tmp_path / "failing-syntax" / "main.py"
         original = file_path.read_text(encoding="utf-8")
+        changes = AutoFixAgent._find_missing_colons(original)
 
-        count = agent._apply_syntax_colon_fix(file_path)
+        count = AutoFixAgent._apply_line_fixes(file_path, changes)
 
         assert count == 0
         assert file_path.read_text(encoding="utf-8") == original
@@ -300,3 +299,32 @@ class TestColonFix:
     def test_find_missing_colons_empty_on_correct_file(self):
         content = "def add(a, b):\n    return a + b\n"
         assert AutoFixAgent._find_missing_colons(content) == []
+
+    def test_detect_syntax_error_finds_typo(self):
+        content = "df multiply(x, y):\n    return x * y\n"
+        result = AutoFixAgent._detect_syntax_error(content, "main.py")
+        assert result is not None
+        line_nr, broken_line, error_msg = result
+        assert line_nr == 1
+        assert "df multiply" in broken_line
+
+    def test_detect_syntax_error_returns_none_on_valid(self):
+        content = "def multiply(x, y):\n    return x * y\n"
+        assert AutoFixAgent._detect_syntax_error(content, "main.py") is None
+
+    def test_llm_fix_used_when_regex_fails(self, tmp_path):
+        """compile() finds error, LLM provides fix → plan is safe."""
+        repo_dir = tmp_path / "failing-syntax"
+        repo_dir.mkdir()
+        # 'df' typo — regex won't match, compile() will catch it
+        (repo_dir / "main.py").write_text("df multiply(x, y):\n    return x * y\n", encoding="utf-8")
+
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value = MagicMock(content="def multiply(x, y):")
+
+        agent = AutoFixAgent(test_repos_root=tmp_path, llm=mock_llm)
+        plan = agent.plan_fix(make_diagnosis("syntax_error", "main.py"), "failing-syntax", 2)
+
+        assert plan.safe_to_apply is True
+        assert plan.line_fixes
+        assert "def multiply(x, y):" in plan.line_fixes[0][2]
