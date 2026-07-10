@@ -38,6 +38,33 @@ from pipeline_doctor.agent.diagnosis_agent import DiagnosisAgent  # noqa: E402
 from pipeline_doctor.agent.auto_fix_deep_agent import create_auto_fix_agent  # noqa: E402
 
 
+def _record_stats(
+    job_name: str,
+    build_number: int,
+    diagnosis,
+    mode: str,
+    elapsed: float,
+    success: bool,
+    pr_url: str | None = None,
+) -> None:
+    """Record a run in the stats tracker. Non-fatal on any error."""
+    try:
+        from pipeline_doctor.reporting.stats_tracker import StatsTracker
+        StatsTracker().record_run(
+            job_name=job_name,
+            build_number=build_number,
+            error_type=diagnosis.error_type,
+            confidence=diagnosis.confidence,
+            mode=mode,
+            elapsed_seconds=elapsed,
+            success=success,
+            pr_url=pr_url,
+        )
+        print("   📊 Stats updated")
+    except Exception as exc:
+        print(f"   ⚠️  Stats tracking failed: {exc}")
+
+
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="Pipeline Doctor — Jenkins Log → Diagnosis → Auto-Fix → PR",
@@ -202,6 +229,8 @@ def main() -> int:
     # Preview mode or --dry-run: stop after diagnosis
     if args.mode == "preview" or dry_run:
         elapsed = time.time() - start
+        stat_mode = "dry-run" if dry_run else "preview"
+        _record_stats(job_name, build_number, diagnosis, stat_mode, elapsed, success=True)
         print("\n" + "=" * 60)
         if args.mode == "preview":
             print("👀 Preview mode — no fix applied")
@@ -231,6 +260,10 @@ def main() -> int:
         answer = input("\n👉 Proceed with auto-fix? [y/N]: ").strip().lower()
 
         if answer not in ("y", "yes", "j", "ja"):
+            _record_stats(
+                job_name, build_number, diagnosis,
+                "interactive-aborted", time.time() - start, success=False,
+            )
             print("\n❌ Aborted by user. No changes made.")
             return 0
 
@@ -283,6 +316,8 @@ def main() -> int:
     # ── Phase 5: Summary ──────────────────────────────────────────────────────
 
     elapsed = time.time() - start
+    _record_stats(job_name, build_number, diagnosis, args.mode, elapsed, success=True)
+
     print("\n" + "=" * 60)
     print("🎉 Pipeline Doctor Complete!")
     print(f"   Job   : {job_name}#{build_number}")

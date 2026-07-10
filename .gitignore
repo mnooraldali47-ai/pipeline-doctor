@@ -57,3 +57,7 @@ test-repos/
 
 # Generated learning reports (LLM output, not for VCS)
 data/bug_museum/*.md
+
+# Statistics data (per-user, not for VCS)
+data/stats.json
+data/stats_test.json
