@@ -52,5 +52,8 @@ reports/
 Thumbs.db
 desktop.ini
 
-# Test-Repos sind eigenst�ndige Git-Repos auf GitHub
+# Test-Repos sind eigenständige Git-Repos auf GitHub
 test-repos/
+
+# Generated learning reports (LLM output, not for VCS)
+data/bug_museum/*.md
