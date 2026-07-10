@@ -130,6 +130,11 @@ def main() -> int:
     log: str
 
     start = time.time()
+    try:
+        from pipeline_doctor.tools.sound_player import play_start_sound
+        play_start_sound()
+    except Exception:
+        pass
 
     # ── Phase 1: Fetch / load build log ──────────────────────────────────────
 
@@ -221,9 +226,19 @@ def main() -> int:
 
     except ValueError as exc:
         print(f"\n   ❌ Diagnosis failed: {exc}")
+        try:
+            from pipeline_doctor.tools.sound_player import play_error_sound
+            play_error_sound()
+        except Exception:
+            pass
         return 1
     except Exception as exc:
         print(f"\n   ❌ Unexpected error during diagnosis: {exc}")
+        try:
+            from pipeline_doctor.tools.sound_player import play_error_sound
+            play_error_sound()
+        except Exception:
+            pass
         return 1
 
     # Preview mode or --dry-run: stop after diagnosis
@@ -311,12 +326,23 @@ def main() -> int:
     except Exception as exc:
         print(f"\n   ❌ Auto-fix agent failed: {exc}")
         traceback.print_exc()
+        try:
+            from pipeline_doctor.tools.sound_player import play_error_sound
+            play_error_sound()
+        except Exception:
+            pass
         return 1
 
     # ── Phase 5: Summary ──────────────────────────────────────────────────────
 
     elapsed = time.time() - start
     _record_stats(job_name, build_number, diagnosis, args.mode, elapsed, success=True)
+
+    try:
+        from pipeline_doctor.tools.sound_player import play_success_sound
+        play_success_sound()
+    except Exception:
+        pass
 
     print("\n" + "=" * 60)
     print("🎉 Pipeline Doctor Complete!")
